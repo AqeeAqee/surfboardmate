@@ -1,7 +1,109 @@
+function updateColors () {
+    color.setColor(13, color.__hsv(settingValues[0] * 255 / 360, 255, settingValues[1] * 255 / 100))
+    color.setColor(11, color.__hsv(settingValues[0] * 255 / 360, 255, settingValues[2] * 255 / 100))
+}
+function showSettings () {
+    if (curSettingIndex == -1) {
+        initSettingArrays()
+        updateColors()
+        for (let index = 0; index <= settingNames.length - 1; index++) {
+            settingSpr = textsprite.create(getSettingItemText(settingNames[index], settingValues[index]), 8, 10)
+            settingSprs[index] = settingSpr
+            settingSpr.left = 2
+            settingSpr.top = index * 28 + 20
+            settingSpr.setBorder(1, 15, 2)
+            settingSpr.setOutline(1, 15)
+            settingSpr.setIcon(settingIcons[index])
+        }
+        changeSettingIndex(1)
+    } else {
+        for (let textSpr of settingSprs) {
+            textSpr.setFlag(SpriteFlag.Invisible, false)
+        }
+    }
+}
+controller.right.onEvent(ControllerButtonEvent.Repeated, function () {
+    if (mode == 0) {
+        changeSettingValue(1)
+    }
+})
+function hideSettings () {
+    for (let textSpr of settingSprs) {
+        textSpr.setFlag(SpriteFlag.Invisible, true)
+    }
+}
+function changeSettingIndex (dir: number) {
+    if (curSettingIndex != -1) {
+        settingSprs[curSettingIndex].setBorder(1, 15, 2)
+        settingSprs[curSettingIndex].setOutline(1, 15)
+    }
+    curSettingIndex += dir
+    if (curSettingIndex < 0) {
+        curSettingIndex = settingNames.length - 1
+    } else if (curSettingIndex > settingNames.length - 1) {
+        curSettingIndex = 0
+    }
+    settingSprs[curSettingIndex].setBorder(1, 10, 2)
+    settingSprs[curSettingIndex].setOutline(1, 3)
+    scene.centerCameraAt(80, settingSprs[curSettingIndex].y)
+}
+controller.left.onEvent(ControllerButtonEvent.Pressed, function () {
+    if (mode == 0) {
+        changeSettingValue(-1)
+    }
+})
 controller.up.onEvent(ControllerButtonEvent.Pressed, function () {
     if (mode == 0) {
         changeSettingIndex(-1)
     }
+})
+function changeSettingValue (delta: number) {
+    if (radioSending) {
+        return
+    }
+    radioSending = true
+    temp = delta + settingValues[curSettingIndex]
+    if (temp < settingMinValues[curSettingIndex]) {
+        temp = settingMaxValues[curSettingIndex]
+    } else if (temp > settingMaxValues[curSettingIndex]) {
+        temp = settingMinValues[curSettingIndex]
+    }
+    sdwireless.sdw_mbit_send_value(settingNames[curSettingIndex], temp)
+    settingValues[curSettingIndex] = temp
+    settingSprs[curSettingIndex].setText(getSettingItemText(settingNames[curSettingIndex], temp))
+    if (curSettingIndex <= 2) {
+        updateColors()
+    }
+    pause(1)
+    radioSending = false
+}
+controller.right.onEvent(ControllerButtonEvent.Pressed, function () {
+    if (mode == 0) {
+        changeSettingValue(1)
+    }
+})
+function drawScanline () {
+    t += 2
+    if (t >= 160) {
+        t = 0
+        for (let index = 0; index <= values.length - 1; index++) {
+            values[index] = 0
+            lastValues[index] = 0
+            lastTs[index] = 0
+        }
+    }
+    picture.drawLine(t, 0, t, 119, 15)
+    picture.drawLine(t + 1, 0, t + 1, 119, 15)
+    picture.drawLine(t + 2, 0, t + 2, 119, 10)
+}
+function plotBars () {
+    picture.fill(15)
+    for (let index2 = 0; index2 <= values.length - 1; index2++) {
+        picture.fillRect(80, index2 * 40, values[index2], 20, colors[index2])
+    }
+}
+sdwireless.sdw_onmbit_string(function (radioMsg) {
+    gotData(radioMsg)
 })
 controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     scene.setBackgroundImage(img`
@@ -129,107 +231,13 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     if (mode == 0) {
         mode = 1
         sdwireless.sdw_mbit_send_value("mode", mode)
-        hideSettingScene()
+        hideSettings()
         scene.setBackgroundImage(picture)
     } else {
         mode = 0
         sdwireless.sdw_mbit_send_value("mode", mode)
-        showSettingScene()
+        showSettings()
     }
-})
-function showSettingScene () {
-    if (curSettingIndex == -1) {
-        initSettingArrays()
-        for (let index = 0; index <= settingNames.length - 1; index++) {
-            settingSpr = textsprite.create(" " + settingNames[index] + " : " + settingValues[index] + " ")
-            settingSprs[index] = settingSpr
-            settingSpr.left = 10
-            settingSpr.top = index * 20 + 20
-        }
-        changeSettingIndex(1)
-    } else {
-        for (let textSpr of settingSprs) {
-            textSpr.setFlag(SpriteFlag.Invisible, false)
-        }
-    }
-}
-controller.right.onEvent(ControllerButtonEvent.Repeated, function () {
-    if (mode == 0) {
-        changeSettingValue(1)
-    }
-})
-function changeSettingIndex (dir: number) {
-    if (curSettingIndex != -1) {
-        settingSprs[curSettingIndex].setBorder(0, 6)
-    }
-    curSettingIndex += dir
-    if (curSettingIndex < 0) {
-        curSettingIndex = settingNames.length - 1
-    } else if (curSettingIndex > settingNames.length - 1) {
-        curSettingIndex = 0
-    }
-    settingSprs[curSettingIndex].setBorder(2, 5)
-    scene.centerCameraAt(80, settingSprs[curSettingIndex].y)
-}
-controller.left.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (mode == 0) {
-        changeSettingValue(-1)
-    }
-})
-function changeSettingValue (delta: number) {
-    if (radioSending) {
-        return
-    }
-    radioSending = true
-    temp = delta + settingValues[curSettingIndex]
-    if (temp < settingMinValues[curSettingIndex]) {
-        temp = settingMaxValues[curSettingIndex]
-    } else if (temp > settingMaxValues[curSettingIndex]) {
-        temp = settingMinValues[curSettingIndex]
-    }
-    settingValues[curSettingIndex] = temp
-    settingSprs[curSettingIndex].setText(" " + settingNames[curSettingIndex] + " : " + temp + " ")
-    sdwireless.sdw_mbit_send_value(settingNames[curSettingIndex], temp)
-    pause(15)
-    radioSending = false
-}
-controller.right.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (mode == 0) {
-        changeSettingValue(1)
-    }
-})
-function hideSettingScene () {
-    for (let textSpr of settingSprs) {
-        textSpr.setFlag(SpriteFlag.Invisible, true)
-    }
-}
-function drawScanline () {
-    t += 2
-    if (t >= 160) {
-        t = 0
-        for (let index = 0; index <= values.length - 1; index++) {
-            values[index] = 0
-            lastValues[index] = 0
-            lastTs[index] = 0
-        }
-    }
-    picture.drawLine(t, 0, t, 119, 15)
-    picture.drawLine(t + 1, 0, t + 1, 119, 15)
-    picture.drawLine(t + 2, 0, t + 2, 119, 10)
-}
-function plotBars () {
-    picture.fill(15)
-    for (let index2 = 0; index2 <= values.length - 1; index2++) {
-        picture.fillRect(80, index2 * 40, values[index2], 20, colors[index2])
-    }
-}
-controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (mode == 0) {
-        changeSettingIndex(1)
-    }
-})
-sdwireless.sdw_onmbit_string(function (radioMsg) {
-    gotData(radioMsg)
 })
 function gotData (strData: string) {
     console.log(strData)
@@ -248,6 +256,11 @@ function gotData (strData: string) {
         lastTs[index3] = t
     }
 }
+controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
+    if (mode == 0) {
+        changeSettingIndex(1)
+    }
+})
 function initSettingArrays () {
     settingSprs = []
     settingNames = [
@@ -268,7 +281,7 @@ function initSettingArrays () {
     ]
     settingMaxValues = [
     360,
-    99,
+    100,
     50,
     200,
     70,
@@ -282,6 +295,119 @@ function initSettingArrays () {
     1,
     10
     ]
+    settingIcons = [
+    img`
+        . . . . b b b b b b b . . . . . 
+        . . b b d d d d d d d b b . . . 
+        . b d d d d d d d d d d d b . . 
+        . b d d d d d d d d d d d b . . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        b d d d d d d d d d d d d d b . 
+        . b d d d d d d d d d d d b . . 
+        . b d d d d d d d d d d d b . . 
+        . . b b d d d d d d d b b . . . 
+        . . . . b b b b b b b . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `,
+    img`
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . d d . . . . . . . . . . . . . 
+        d . . . . . . . . . . . . . . . 
+        d . . . . . . . . . . . . . . . 
+        d . . . . . . . . . . . . . . . 
+        d . . . . . d d d d d . . . . . 
+        d . . d d d d . . . d d . . . . 
+        . d d d . . . . . . . d . . . . 
+        . . . . . . . . . . . d . . . . 
+        . . . . . . . . . . . d . . . . 
+        . . . . . . . . . . d . . . . . 
+        . . . . . . . . . d . . . . . . 
+        . . . . . . . . d d . . . . . . 
+        . . . . . . . d d . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `,
+    img`
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . b b . . . . . . . . . . . . . 
+        b . . . . . . . . . . . . . . . 
+        b . . . . . . . . . . . . . . . 
+        b . . . . . . . . . . . . . . . 
+        b . . . . . b b b b b . . . . . 
+        b . . b b b b . . . b b . . . . 
+        . b b b . . . . . . . b . . . . 
+        . . . . . . . . . . . b . . . . 
+        . . . . . . . . . . . b . . . . 
+        . . . . . . . . . . b . . . . . 
+        . . . . . . . . . b . . . . . . 
+        . . . . . . . . b b . . . . . . 
+        . . . . . . . b b . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `,
+    img`
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . 1 1 1 1 . . . . . . . . 
+        . . . 1 1 . . 1 1 1 . . . . . . 
+        . . 1 1 . . . . . 1 . . . . . . 
+        . . 1 . . . . . . . . . . . . . 
+        . . 1 . . . . . . . . . . . . . 
+        . . 1 . . . . 1 1 1 1 . . . . . 
+        . . 1 . . . . . . . 1 . . . . . 
+        . . 1 . . . . . . . 1 . . . . . 
+        . . 1 1 . . . . . . 1 . . . . . 
+        . . . 1 1 . . . 1 1 1 . . . . . 
+        . . . . 1 1 1 1 . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `,
+    img`
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . 1 1 . . 1 1 . . . . . . . 
+        1 . 1 . . . . . . 1 . 1 . . . . 
+        1 1 . . . . . . . . 1 1 . . . . 
+        1 1 1 . . . . . . 1 1 1 . . . . 
+        . . . . . . . . . . . . . . . . 
+        b b . . . . . . . . . b b . . . 
+        . b b b b b b b b b b b . . . . 
+        . . . . . . b . . . . . . . . . 
+        . . . . . . b . . . . . . . . . 
+        . b b . . . b . . . . b b . . . 
+        . b b b b b b b b b b b b . . . 
+        . b b . . . . . . . . b b . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `,
+    img`
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . 1 . . . . . . 
+        . . . . . . . . . . 1 . . . . . 
+        . . . . 1 1 1 1 1 1 1 1 . . . . 
+        . . . . . . . . . . 1 . . . . . 
+        b . . . . . . . . 1 . . . . . . 
+        . b b . . . . . . . . . . . . b 
+        . . b b b b b b b b b b b b b . 
+        . . . . b . . . . . . . b . . . 
+        . . . b b b . . . . . b b b . . 
+        . . . b b b . . . . . b b b . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        . . . . . . . . . . . . . . . . 
+        `
+    ]
+}
+function getSettingItemText (itemName: string, itemValue: number) {
+    return "" + itemName + " : " + itemValue + ""
 }
 controller.left.onEvent(ControllerButtonEvent.Repeated, function () {
     if (mode == 0) {
@@ -297,10 +423,11 @@ let settingMaxValues: number[] = []
 let settingMinValues: number[] = []
 let temp = 0
 let radioSending = false
+let settingIcons: Image[] = []
 let settingSprs: TextSprite[] = []
-let settingValues: number[] = []
 let settingSpr: TextSprite = null
 let settingNames: string[] = []
+let settingValues: number[] = []
 let curSettingIndex = 0
 let mode = 0
 let colors: number[] = []
