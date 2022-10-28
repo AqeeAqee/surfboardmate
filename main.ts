@@ -436,8 +436,8 @@ let settingValues: number[] = []
 let curSettingIndex = 0
 let mode = 0
 let colors: number[] = []
+let sim = 0
 let picture: Image = null
-let sim = true
 picture = image.create(160, 120)
 scene.setBackgroundImage(picture)
 if (!(sim)) {
