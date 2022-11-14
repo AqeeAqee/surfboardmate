@@ -17,7 +17,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     }
 })
 controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
-    game.showLongText("test12345", DialogLayout.Bottom)
+    pause2 = !(pause2)
 })
 function updateColors () {
     color.setColor(13, color.__hsv(settingValues[0] * 255 / 360, 255, settingValues[1] * 255 / 100))
@@ -27,8 +27,8 @@ function showSettings () {
     if (curSettingIndex == -1) {
         initSettingArrays()
         updateColors()
-        dialogBG = sprites.create(new myDialog(settingNames.length*(28)+15+6).getImage())
-        dialogBG.top=15-12
+        dialogBG = sprites.create(new myDialog(settingNames.length*(28)+15+6).getImage(), 0)
+        dialogBG.top = 15 - 12
         for (let index = 0; index <= settingNames.length - 1; index++) {
             settingSpr = textsprite.create(getSettingItemText(settingNames[index], settingValues[index]), 0, 15)
             settingSprs[index] = settingSpr
@@ -133,7 +133,7 @@ sdwireless.sdw_onmbit_string(function (radioMsg) {
 function gotData (strData: string) {
     // console.log(strData)
     strValues = strData.split(",")
-    if (mode == 0) {
+    if (mode == 0 || pause2) {
         return
     }
     for (let index3 = 0; index3 <= strValues.length - 1; index3++) {
@@ -158,7 +158,7 @@ function initSettingArrays () {
     "AccYThreshold%"
     ]
     // console.log(blockSettings.exists("SurfBoardMate"))
-    if (blockSettings.exists("SurfBoardMate") && settingNames.length== blockSettings.readNumberArray("SurfBoardMate").length) {
+    if (blockSettings.exists("SurfBoardMate") && settingNames.length == blockSettings.readNumberArray("SurfBoardMate").length) {
         settingValues = blockSettings.readNumberArray("SurfBoardMate")
         console.log(settingValues.length)
     } else {
@@ -315,17 +315,19 @@ let settingMaxValues: number[] = []
 let settingMinValues: number[] = []
 let temp = 0
 let radioSending = false
-let dialogBG: Sprite = null
 let settingIcons: Image[] = []
 let settingSprs: TextSprite[] = []
 let settingSpr: TextSprite = null
 let settingNames: string[] = []
+let dialogBG: Sprite = null
 let settingValues: number[] = []
 let curSettingIndex = 0
 let mode = 0
 let colors: number[] = []
 let picture: Image = null
-let sim = true
+let pause2 = false
+let sim = false
+pause2 = false
 picture = image.create(160, 120)
 scene.setBackgroundImage(picture)
 if (!(sim)) {
@@ -344,7 +346,7 @@ colors = [
 mode = 1
 curSettingIndex = -1
 game.onUpdateInterval(50, function () {
-    if (mode == 1) {
+    if (mode == 1 && !(pause2)) {
         drawScanline()
     }
 })
